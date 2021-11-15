@@ -1,0 +1,14 @@
+# place below contents in your project gradle.properties
+axonPlatformGroupId=org.axonframework
+axonPlatformArtifactId=axon-bom
+axonPlatformVersion=4.5.5
+
+# place below contents with proper values in your ~/.gradle/gradle.properties
+
+signing.keyId=
+signing.password=
+signing.secretKeyRingFile=
+
+ossrhUsername=
+ossrhPassword=
+ossrhStagingProfileId=

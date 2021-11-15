@@ -1,12 +1,15 @@
+import javax.naming.ConfigurationException
 
 plugins {
     id 'java-library'
     id 'org.jetbrains.kotlin.multiplatform' version '1.5.31'
     id 'maven-publish'
+    id 'signing'
 }
 
 group = 'info.cepheus'
 version = '0.0.1'
+archivesBaseName = 'cepheus_axon_extension'
 
 repositories {
     mavenCentral()
@@ -56,3 +59,47 @@ kotlin {
         }
     }
 }
+
+ext {
+    it.'signing.secretKeyRingFile' = project.findProperty('signing.secretKeyRingFile')
+    it.'signing.password' = project.findProperty('signing.password')
+    it.'signing.keyId' = project.findProperty('signing.keyId')
+    it.ossrhUsername = project.findProperty('ossrhUsername')
+    it.ossrhPassword = project.findProperty('ossrhPassword')
+    it.ossrhStagingProfileId = project.findProperty('ossrhStagingProfileId')
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId 'info.cepheus'
+            artifactId 'cepheus_axon_extension'
+            version '0.0.1'
+        }
+    }
+    repositories {
+        //
+        // repositories to publish to
+        //
+        maven {
+            name 'ossrh'
+            url 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
+            credentials {
+                username = ossrhUsername
+                password = ossrhPassword
+            }
+        }
+    }
+}
+
+tasks.withType(PublishToMavenRepository) {
+    doFirst {
+        if (!ossrhUsername) {
+            throw new ConfigurationException('Please set the sonatype username with project property "ossrhUsername" ')
+        }
+        if (!ossrhPassword) {
+            throw new ConfigurationException('Please set the sonatype password with project property "ossrhPassword" ')
+        }
+    }
+}
+
