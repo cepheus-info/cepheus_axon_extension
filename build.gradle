@@ -5,6 +5,7 @@ plugins {
     id 'org.jetbrains.kotlin.multiplatform' version '1.5.31'
     id 'maven-publish'
     id 'signing'
+    id 'org.jetbrains.dokka' version '1.5.31'
 }
 
 group = 'info.cepheus'
@@ -99,6 +100,62 @@ tasks.withType(PublishToMavenRepository) {
         }
         if (!ossrhPassword) {
             throw new ConfigurationException('Please set the sonatype password with project property "ossrhPassword" ')
+        }
+    }
+}
+
+signing {
+    if (project.findProperty('signing.keyId') && project.findProperty('signing.password') && project.findProperty('signing.secretKeyRingFile')) {
+        sign configurations.archives
+
+        /* Uncomment this if you use shadow in your build process */
+        // sign configurations.shadow
+    } else {
+        throw new ConfigurationException('No signing info found.')
+    }
+}
+
+def customizePom(pom) {
+    pom.withXml {
+        def root = asNode()
+
+        // eliminate test-scoped dependencies (no need in maven central POMs)
+        root.dependencies.removeAll { dep ->
+            dep.scope == "test"
+        }
+
+        // add all items necessary for maven central publication
+        root.children().last() + {
+            resolveStrategy = Closure.DELEGATE_FIRST
+
+            description 'Serialize and Deserialize Json-LD into Java entities'
+            name 'Cepheus Axon Extension'
+            url 'https://github.com/cepheus-info/cepheus_axon_extension'
+            organization {
+                name 'cepheus.info'
+                url 'https://github.com/cepheus-info'
+            }
+            issueManagement {
+                system 'GitHub'
+                url 'https://github.com/cepheus-info/cepheus_axon_extension/issues'
+            }
+            licenses {
+                license {
+                    name 'Apache License 2.0'
+                    url 'https://github.com/cepheus-info/cepheus_axon_extension/blob/master/LICENSE'
+                    distribution 'repo'
+                }
+            }
+            scm {
+                url 'https://github.com/cepheus-info/cepheus_axon_extension'
+                connection 'scm:git:git://github.com/cepheus-info/cepheus_axon_extension.git'
+                developerConnection 'scm:git:ssh://git@github.com:cepheus-info/cepheus_axon_extension.git'
+            }
+            developers {
+                developer {
+                    name 'Juntao Wu'
+                }
+            }
         }
     }
 }
