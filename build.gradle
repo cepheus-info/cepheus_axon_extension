@@ -46,45 +46,58 @@ task javadocJar(type: org.gradle.jvm.tasks.Jar) {
 publishing {
     publications {
         maven(MavenPublication) {
-
             groupId 'info.cepheus'
             artifactId 'cepheus_axon_extension'
             version '0.0.1'
 
-            customizePom(pom)
-            def pomAscFile = new Object()
+            File pomAscFile = null
+            pom {
+                name = 'Cepheus Axon Extension'
+                description = 'A customized axon extension infrastructure'
+                url = 'https://github.com/cepheus-info/cepheus_axon_extension'
+                organization {
+                    name = 'cepheus.info'
+                    url = 'https://github.com/cepheus-info'
+                }
+                issueManagement {
+                    system = 'GitHub'
+                    url = 'https://github.com/cepheus-info/cepheus_axon_extension/issues'
+                }
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://github.com/cepheus-info/cepheus_axon_extension/blob/master/LICENSE'
+                        distribution = 'repo'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'wujuntaocn'
+                        name = 'Juntao Wu'
+                        email = 'wujuntaocn@outlook.com'
+                    }
+                }
+                scm {
+                    url = 'https://github.com/cepheus-info/cepheus_axon_extension'
+                    connection = 'scm:git:git://github.com/cepheus-info/cepheus_axon_extension.git'
+                    developerConnection = 'scm:git:ssh://git@github.com:cepheus-info/cepheus_axon_extension.git'
+                }
+            }
+
             pom.withXml {
                 pomAscFile = signPom.signatureFiles[0]
             }
 
             artifacts {
-                artifact(jar)
+                //noinspection GroovyAssignabilityCheck
+                artifact jar
+                //noinspection GroovyAssignabilityCheck
                 artifact kotlinSourcesJar
+                //noinspection GroovyAssignabilityCheck
                 artifact javadocJar
+                // pom-default.xml.asc
                 pomAscFile
             }
-
-//            // create the sign pom artifact
-//            pom.withXml {
-//                def pomAscFile = signPom.signatureFiles[0]
-//                artifact(pomAscFile) {
-//                    classifier = null
-//                    extension = 'pom.asc'
-//                }
-//            }
-
-//            // create the signed artifacts
-//            project.tasks.signMavenPublication.signatureFiles.each {
-//                artifact(it) {
-//                    def matcher = it.file =~ /-(sources|javadoc)\.jar\.asc$/
-//                    if (matcher.find()) {
-//                        classifier = matcher.group(1)
-//                    } else {
-//                        classifier = null
-//                    }
-//                    extension = 'jar.asc'
-//                }
-//            }
         }
     }
     repositories {
@@ -99,6 +112,9 @@ publishing {
     }
 }
 
+/**
+ * configure signing plugin including(pom-default.xml, libs/jar)
+ */
 signing {
     if (project.findProperty('signing.keyId') && project.findProperty('signing.password') && project.findProperty('signing.secretKeyRingFile')) {
         sign publishing.publications.maven
@@ -108,64 +124,29 @@ signing {
     }
 }
 
-task signPom(type: Sign) {
+/**
+ * sign pom-default.xml
+ */
+task signPomFile(type: Sign) {
     sign project.file("$buildDir/publications/maven/pom-default.xml")
     outputs.upToDateWhen { false }
-    // the signing plugin does not seem to notice
-    // it when the publications folder with the
-    // signature has been deleted. So we always
-    // create a new signature
 }
 
-def customizePom(pom) {
-    pom.withXml {
-        def root = asNode()
-
-        // eliminate test-scoped dependencies (no need in maven central POMs)
-        root.dependencies.removeAll { dep ->
-            dep.scope == "test"
-        }
-
-        // add all items necessary for maven central publication
-        root.children().last() + {
-            resolveStrategy = Closure.DELEGATE_FIRST
-
-            description 'Serialize and Deserialize Json-LD into Java entities'
-            name 'Cepheus Axon Extension'
-            url 'https://github.com/cepheus-info/cepheus_axon_extension'
-            organization {
-                name 'cepheus.info'
-                url 'https://github.com/cepheus-info'
-            }
-            issueManagement {
-                system 'GitHub'
-                url 'https://github.com/cepheus-info/cepheus_axon_extension/issues'
-            }
-            licenses {
-                license {
-                    name 'MIT License'
-                    url 'https://github.com/cepheus-info/cepheus_axon_extension/blob/master/LICENSE'
-                    distribution 'repo'
-                }
-            }
-            scm {
-                url 'https://github.com/cepheus-info/cepheus_axon_extension'
-                connection 'scm:git:git://github.com/cepheus-info/cepheus_axon_extension.git'
-                developerConnection 'scm:git:ssh://git@github.com:cepheus-info/cepheus_axon_extension.git'
-            }
-            developers {
-                developer {
-                    name 'Juntao Wu'
-                }
-            }
-        }
-
-        def pomFile = file("$buildDir/publications/maven/pom-default.xml")
-        writeTo(pomFile)
-    }
+/**
+ * add dependencies for publishToMavenLocal
+ */
+tasks.withType(PublishToMavenLocal) {
+    dependsOn project.tasks.javadocJar
+    dependsOn project.tasks.signArchives
+    dependsOn project.tasks.signMavenPublication
 }
 
+/**
+ * add dependencies for publishMavenPublicationToYourRepository
+ */
 tasks.withType(PublishToMavenRepository) {
+    dependsOn project.tasks.javadocJar
+    dependsOn project.tasks.signArchives
     dependsOn project.tasks.signMavenPublication
     doFirst {
         if (!ossrhUsername) {
@@ -174,21 +155,5 @@ tasks.withType(PublishToMavenRepository) {
         if (!ossrhPassword) {
             throw new ConfigurationException('Please set the sonatype password with project property "ossrhPassword" ')
         }
-    }
-}
-
-model {
-//    tasks.generatePomFileForMavenPublication {
-//        destination = file("$buildDir/publications/maven/pom-default.xml")
-//    }
-    tasks.publishMavenPublicationToMavenLocal {
-        dependsOn project.tasks.javadocJar
-        dependsOn project.tasks.signArchives
-        dependsOn project.tasks.signMavenPublication
-    }
-    tasks.publishMavenPublicationToOssrhRepository {
-        dependsOn project.tasks.javadocJar
-        dependsOn project.tasks.signArchives
-        dependsOn project.tasks.signMavenPublication
     }
 }
