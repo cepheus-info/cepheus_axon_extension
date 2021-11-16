@@ -2,7 +2,7 @@ import javax.naming.ConfigurationException
 
 plugins {
     id 'java-library'
-    id 'org.jetbrains.kotlin.multiplatform' version '1.5.31'
+    id 'org.jetbrains.kotlin.jvm' version '1.5.31'
     id 'maven-publish'
     id 'signing'
     id 'org.jetbrains.dokka' version '1.5.31'
@@ -27,40 +27,6 @@ dependencies {
     implementation 'io.projectreactor:reactor-core:3.4.11'
 }
 
-kotlin {
-    jvm {
-        compilations.all {
-            kotlinOptions.jvmTarget = '11'
-        }
-        withJava()
-        testRuns["test"].executionTask.configure {
-            useJUnitPlatform()
-        }
-    }
-
-    sourceSets {
-        commonMain {
-
-        }
-        commonTest {
-            dependencies {
-                implementation kotlin('test-common')
-                implementation kotlin('test-annotations-common')
-            }
-        }
-        jvmMain {
-
-        }
-        jvmTest {
-            dependencies {
-                implementation kotlin('test-junit5')
-                implementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
-                runtimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.6.0'
-            }
-        }
-    }
-}
-
 ext {
     it.'signing.secretKeyRingFile' = project.findProperty('signing.secretKeyRingFile')
     it.'signing.password' = project.findProperty('signing.password')
@@ -70,18 +36,58 @@ ext {
     it.ossrhStagingProfileId = project.findProperty('ossrhStagingProfileId')
 }
 
+task javadocJar(type: org.gradle.jvm.tasks.Jar) {
+    group 'documentation'
+    dependsOn dokkaHtml
+    archiveClassifier.set('javadoc')
+    from dokkaHtml.outputDirectory
+}
+
 publishing {
     publications {
         maven(MavenPublication) {
+
             groupId 'info.cepheus'
             artifactId 'cepheus_axon_extension'
             version '0.0.1'
+
+            customizePom(pom)
+            def pomAscFile = new Object()
+            pom.withXml {
+                pomAscFile = signPom.signatureFiles[0]
+            }
+
+            artifacts {
+                artifact(jar)
+                artifact kotlinSourcesJar
+                artifact javadocJar
+                pomAscFile
+            }
+
+//            // create the sign pom artifact
+//            pom.withXml {
+//                def pomAscFile = signPom.signatureFiles[0]
+//                artifact(pomAscFile) {
+//                    classifier = null
+//                    extension = 'pom.asc'
+//                }
+//            }
+
+//            // create the signed artifacts
+//            project.tasks.signMavenPublication.signatureFiles.each {
+//                artifact(it) {
+//                    def matcher = it.file =~ /-(sources|javadoc)\.jar\.asc$/
+//                    if (matcher.find()) {
+//                        classifier = matcher.group(1)
+//                    } else {
+//                        classifier = null
+//                    }
+//                    extension = 'jar.asc'
+//                }
+//            }
         }
     }
     repositories {
-        //
-        // repositories to publish to
-        //
         maven {
             name 'ossrh'
             url 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
@@ -93,26 +99,22 @@ publishing {
     }
 }
 
-tasks.withType(PublishToMavenRepository) {
-    doFirst {
-        if (!ossrhUsername) {
-            throw new ConfigurationException('Please set the sonatype username with project property "ossrhUsername" ')
-        }
-        if (!ossrhPassword) {
-            throw new ConfigurationException('Please set the sonatype password with project property "ossrhPassword" ')
-        }
-    }
-}
-
 signing {
     if (project.findProperty('signing.keyId') && project.findProperty('signing.password') && project.findProperty('signing.secretKeyRingFile')) {
+        sign publishing.publications.maven
         sign configurations.archives
-
-        /* Uncomment this if you use shadow in your build process */
-        // sign configurations.shadow
     } else {
         throw new ConfigurationException('No signing info found.')
     }
+}
+
+task signPom(type: Sign) {
+    sign project.file("$buildDir/publications/maven/pom-default.xml")
+    outputs.upToDateWhen { false }
+    // the signing plugin does not seem to notice
+    // it when the publications folder with the
+    // signature has been deleted. So we always
+    // create a new signature
 }
 
 def customizePom(pom) {
@@ -141,7 +143,7 @@ def customizePom(pom) {
             }
             licenses {
                 license {
-                    name 'Apache License 2.0'
+                    name 'MIT License'
                     url 'https://github.com/cepheus-info/cepheus_axon_extension/blob/master/LICENSE'
                     distribution 'repo'
                 }
@@ -157,6 +159,36 @@ def customizePom(pom) {
                 }
             }
         }
+
+        def pomFile = file("$buildDir/publications/maven/pom-default.xml")
+        writeTo(pomFile)
     }
 }
 
+tasks.withType(PublishToMavenRepository) {
+    dependsOn project.tasks.signMavenPublication
+    doFirst {
+        if (!ossrhUsername) {
+            throw new ConfigurationException('Please set the sonatype username with project property "ossrhUsername" ')
+        }
+        if (!ossrhPassword) {
+            throw new ConfigurationException('Please set the sonatype password with project property "ossrhPassword" ')
+        }
+    }
+}
+
+model {
+//    tasks.generatePomFileForMavenPublication {
+//        destination = file("$buildDir/publications/maven/pom-default.xml")
+//    }
+    tasks.publishMavenPublicationToMavenLocal {
+        dependsOn project.tasks.javadocJar
+        dependsOn project.tasks.signArchives
+        dependsOn project.tasks.signMavenPublication
+    }
+    tasks.publishMavenPublicationToOssrhRepository {
+        dependsOn project.tasks.javadocJar
+        dependsOn project.tasks.signArchives
+        dependsOn project.tasks.signMavenPublication
+    }
+}
