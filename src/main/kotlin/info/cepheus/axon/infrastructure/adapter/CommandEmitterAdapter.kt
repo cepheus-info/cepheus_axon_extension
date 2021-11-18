@@ -6,7 +6,7 @@ import org.axonframework.commandhandling.CommandExecutionException
 import org.axonframework.commandhandling.gateway.CommandGateway
 import javax.transaction.Transactional
 
-class CommandEmitterAdapter(private val commandGateway: CommandGateway) : CommandEmitterService {
+open class CommandEmitterAdapter(private val commandGateway: CommandGateway) : CommandEmitterService {
     @Transactional(Transactional.TxType.REQUIRED)
     @Throws(IllegalStateException::class)
     override fun <R> sendAndWaitFor(command: Any?): R {

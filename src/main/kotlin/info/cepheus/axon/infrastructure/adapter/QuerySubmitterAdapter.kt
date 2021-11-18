@@ -11,7 +11,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
 import java.util.logging.Level
 
-class QuerySubmitterAdapter(private val queryGateway: QueryGateway) : QuerySubmitterService {
+open class QuerySubmitterAdapter(private val queryGateway: QueryGateway) : QuerySubmitterService {
 
     override fun <R, Q> query(query: Q, responseType: Class<R>): CompletableFuture<R> {
         return queryGateway.query(query, responseType)

@@ -9,7 +9,7 @@ plugins {
 }
 
 group = 'info.cepheus'
-version = '0.0.1'
+version = '0.0.2'
 archivesBaseName = 'cepheus_axon_extension'
 
 repositories {
@@ -48,7 +48,7 @@ publishing {
         maven(MavenPublication) {
             groupId 'info.cepheus'
             artifactId 'cepheus_axon_extension'
-            version '0.0.1'
+            version '0.0.2'
 
             File pomAscFile = null
             pom {
@@ -85,7 +85,7 @@ publishing {
             }
 
             pom.withXml {
-                pomAscFile = signPom.signatureFiles[0]
+                pomAscFile = signPomFile.signatureFiles[0]
             }
 
             artifacts {
