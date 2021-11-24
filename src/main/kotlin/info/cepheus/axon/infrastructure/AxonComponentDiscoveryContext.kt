@@ -28,6 +28,10 @@ class AxonComponentDiscoveryContext private constructor() {
         onDiscoveredAnnotation.forEach(action!!)
     }
 
+    fun addComponentDiscovery(componentDiscovery: AxonComponentDiscovery) {
+        componentDiscovery.addDiscoveredComponentsTo(this)
+    }
+
     override fun toString(): String {
         return ("AxonComponentDiscoveryContext [configurer=" + configurer + ", onAggregateConfiguration=" + onAggregateConfiguration
                 + ", onDiscoveredAnnotation=" + onDiscoveredAnnotation + "]")

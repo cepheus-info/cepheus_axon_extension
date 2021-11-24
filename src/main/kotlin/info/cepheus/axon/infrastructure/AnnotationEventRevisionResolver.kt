@@ -15,8 +15,8 @@ class AnnotationEventRevisionResolver : RevisionResolver {
     /**
      * {@inheritDoc}
      */
-    override fun revisionOf(payloadType: Class<*>): String {
+    override fun revisionOf(payloadType: Class<*>): String? {
         val revision = payloadType.getAnnotation(EventRevision::class.java)
-        return revision.value
+        return revision?.value
     }
 }
