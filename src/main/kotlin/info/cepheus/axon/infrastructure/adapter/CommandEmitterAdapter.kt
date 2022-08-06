@@ -4,6 +4,7 @@ import info.cepheus.axon.infrastructure.adapter.ExceptionCause.Companion.of
 import info.cepheus.axon.infrastructure.boundary.command.CommandEmitterService
 import org.axonframework.commandhandling.CommandExecutionException
 import org.axonframework.commandhandling.gateway.CommandGateway
+import java.util.concurrent.CompletableFuture
 import javax.transaction.Transactional
 
 open class CommandEmitterAdapter(private val commandGateway: CommandGateway) : CommandEmitterService {
@@ -15,6 +16,12 @@ open class CommandEmitterAdapter(private val commandGateway: CommandGateway) : C
         } catch (e: CommandExecutionException) {
             throw of(e).unwrapped()
         }
+    }
+
+    @Transactional(Transactional.TxType.REQUIRED)
+    @Throws(IllegalStateException::class)
+    override fun <R> send(command: Any?): CompletableFuture<R> {
+        return commandGateway.send(command)
     }
 
     override fun toString(): String {

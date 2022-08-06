@@ -1,5 +1,7 @@
 package info.cepheus.axon.infrastructure.boundary.command
 
+import java.util.concurrent.CompletableFuture
+
 /**
  * Provides methods to send command messages.
  *
@@ -17,4 +19,6 @@ interface CommandEmitterService {
      * @throws IllegalStateException when an checked exception occurred while processing the command
     </R> */
     fun <R> sendAndWaitFor(command: Any?): R
+
+    fun <R> send(command: Any?): CompletableFuture<R>
 }
